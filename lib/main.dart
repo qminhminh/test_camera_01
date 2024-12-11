@@ -40,6 +40,11 @@ class _WebRTCPageState extends State<WebRTCPage> {
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  double _scale = 1.0;
+  double _previousScale = 1.0;
+  Offset _offset = Offset.zero;
+  Offset _previousOffset = Offset.zero;
+
   @override
   void initState() {
     super.initState();
@@ -53,24 +58,6 @@ class _WebRTCPageState extends State<WebRTCPage> {
       Permission.microphone,
       Permission.storage,
     ].request();
-
-    // // Kiểm tra nếu quyền bị từ chối
-    // if (statuses.values.any((status) => status.isDenied)) {
-    //   showDialog(
-    //     context: context,
-    //     builder: (context) => AlertDialog(
-    //       title: const Text("Quyền bị từ chối"),
-    //       content: const Text(
-    //           "Ứng dụng cần quyền camera và microphone để hoạt động."),
-    //       actions: [
-    //         TextButton(
-    //           onPressed: () => Navigator.pop(context),
-    //           child: const Text("Đồng ý"),
-    //         ),
-    //       ],
-    //     ),
-    //   );
-    // }
   }
 
   @override
@@ -83,48 +70,65 @@ class _WebRTCPageState extends State<WebRTCPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // TextField(
-            //   controller: ipcUuidController,
-            //   decoration: const InputDecoration(labelText: "IPC UUID"),
-            // ),
-            // TextField(
-            //   controller: usernameController,
-            //   decoration: const InputDecoration(labelText: "Username"),
-            // ),
-            // TextField(
-            //   controller: passwordController,
-            //   decoration: const InputDecoration(labelText: "Password"),
-            //   obscureText: true,
-            // ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () async {
-                // if (!webrtcService.isConnected) {
-                //  await requestPermissions(); // Đảm bảo quyền trước khi kết nối
-                webrtcService.connect(
-                  ipcUuid: "662e3a00-6b61-11ef-8b20-d73bd8821410",
-                  username: "demo2@epcb.vn",
-                  password: "demo2@123",
-                );
-                // } else {
-                //   webrtcService.disconnect();
-                // }
-              },
-              child: Text(webrtcService.isConnected ? "Stop" : "Connect"),
-            ),
+            webrtcService.isConnected
+                ? InkWell(
+                    onTap: () {
+                      webrtcService.disconnect();
+                    },
+                    child: Text("Stop"))
+                : InkWell(
+                    onTap: () {
+                      webrtcService.connect(
+                        ipcUuid: "662e3a00-6b61-11ef-8b20-d73bd8821410",
+                        username: "demo2@epcb.vn",
+                        password: "demo2@123",
+                      );
+                    },
+                    child: Text("Connect")),
             Expanded(
-              child: Container(
-                color: Colors.black,
-                child: webrtcService.isConnected
-                    ? RTCVideoView(
-                        webrtcService.remoteRenderer,
-                      )
-                    : const Center(
-                        child: Text(
-                          "No Connection",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
+              child: GestureDetector(
+                onScaleStart: (details) {
+                  _previousScale = _scale;
+                  _previousOffset = _offset;
+                },
+                onScaleUpdate: (details) {
+                  setState(() {
+                    _scale = (_previousScale * details.scale).clamp(1.0, 3.0);
+                    if (_scale > 1.0) {
+                      _offset =
+                          _previousOffset + details.focalPointDelta / _scale;
+                    } else {
+                      _offset = Offset.zero;
+                    }
+                  });
+                },
+                onScaleEnd: (details) {
+                  _previousOffset = _offset;
+                },
+                child: Container(
+                  color: Colors.black,
+                  child: ClipRect(
+                    child: Transform(
+                      transform: Matrix4.identity()
+                        ..translate(_offset.dx, _offset.dy)
+                        ..scale(_scale),
+                      child: webrtcService.isConnected
+                          ? RTCVideoView(
+                              webrtcService.remoteRenderer,
+                              mirror: false,
+                              objectFit: RTCVideoViewObjectFit
+                                  .RTCVideoViewObjectFitContain,
+                            )
+                          : const Center(
+                              child: Text(
+                                "No Connection",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ],

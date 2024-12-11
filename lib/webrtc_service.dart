@@ -47,6 +47,8 @@ class WebRTCService extends ChangeNotifier {
         uuid: ipcUuid,
         params: {"ClientId": clientId, "type": "request"},
       );
+      print("clientid: $clientId");
+      print("offer: $offer");
       print(jwtToken);
       await _handleOffer(ipcUuid, offer);
       isConnected = true;
@@ -108,7 +110,7 @@ class WebRTCService extends ChangeNotifier {
 
     final answer = await _peerConnection!.createAnswer();
     await _peerConnection!.setLocalDescription(answer);
-
+    print("answer: ${answer.toMap()}");
     await _sendRPC(
       method: "WEBRTC_ANSWER",
       uuid: uuid,
@@ -126,13 +128,14 @@ class WebRTCService extends ChangeNotifier {
         {'urls': 'stun:demo.espitek.com:3478'},
         {
           'urls': 'turn:demo.espitek.com:3478',
-          'username': 'demo',
-          'credential': 'demo4924'
+          'username': 'demo2@epcb.vn',
+          'credential': 'demo2@123'
         },
       ],
     };
     final pc = await createPeerConnection(config);
 
+    print("pc: $pc");
     pc.onTrack = (RTCTrackEvent event) {
       remoteRenderer.srcObject = event.streams.first;
     };
